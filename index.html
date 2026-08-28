@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meme Searcher</title>
+  <meta name="description" content="지금 인터넷에서 어떤 밈이 뜨고 있는지 빠르게 확인하고, 해당 밈이 무엇인지 이해합니다.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23111111'/%3E%3Ctext x='16' y='21' text-anchor='middle' font-size='14' font-family='Arial' fill='%23ffffff'%3EM%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="stylesheet" href="./css/detail.css">
+  <link rel="stylesheet" href="./css/responsive.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="wordmark" href="./index.html">MEME SEARCHER</a>
+
+      <form class="search-form" id="search-form" role="search">
+        <label class="visually-hidden" for="search-input">밈 검색</label>
+        <input
+          id="search-input"
+          class="search-input"
+          type="search"
+          name="q"
+          placeholder="밈을 검색해보세요"
+          autocomplete="off"
+        >
+        <button class="search-submit" type="submit">검색</button>
+      </form>
+
+      <div class="period-toggle" role="group" aria-label="기간">
+        <button type="button" class="period-btn is-active" data-period="24h" aria-pressed="true">24H</button>
+        <button type="button" class="period-btn" data-period="7d" aria-pressed="false">7D</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell" id="app-shell">
+    <aside class="sidebar" aria-label="국가 필터">
+      <nav class="country-nav" id="country-nav">
+        <button type="button" class="country-btn is-active" data-country="global">전체</button>
+        <button type="button" class="country-btn" data-country="us">미국</button>
+        <button type="button" class="country-btn" data-country="china">중국</button>
+        <button type="button" class="country-btn" data-country="korea">한국</button>
+        <button type="button" class="country-btn" data-country="japan">일본</button>
+      </nav>
+    </aside>
+
+    <main class="main" id="main">
+      <section class="browse-view" id="browse-view">
+        <div class="main-top">
+          <h1 class="page-title">지금 뜨는 밈</h1>
+          <p class="result-count" id="result-count"></p>
+        </div>
+
+        <div class="mobile-countries" id="mobile-countries" aria-label="국가 필터"></div>
+
+        <div class="status-filters" role="group" aria-label="밈 상태">
+          <button type="button" class="status-btn is-active" data-status="all" aria-pressed="true">전체</button>
+          <button type="button" class="status-btn" data-status="popular" aria-pressed="false">인기</button>
+          <button type="button" class="status-btn" data-status="rising" aria-pressed="false">급상승</button>
+          <button type="button" class="status-btn" data-status="new" aria-pressed="false">신규</button>
+        </div>
+
+        <div class="meme-grid" id="meme-grid"></div>
+
+        <div class="empty-state" id="empty-state" hidden>
+          <p class="empty-title" id="empty-title"></p>
+          <p class="empty-sub" id="empty-sub"></p>
+        </div>
+      </section>
+
+      <section class="detail-view" id="detail-view" hidden></section>
+    </main>
+  </div>
+
+  <section class="advertisement" aria-label="광고">
+    <span class="ad-label">Sponsored</span>
+    <div class="advertisement-placeholder">ADVERTISEMENT</div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p class="footer-wordmark">MEME SEARCHER</p>
+      <nav class="footer-nav" aria-label="하단 메뉴">
+        <a href="#about">About</a>
+        <a href="#criteria">밈 선정 기준</a>
+        <a href="#contact">문의</a>
+        <a href="#privacy">개인정보처리방침</a>
+        <a href="#terms">이용약관</a>
+      </nav>
+    </div>
+  </footer>
+
+  <dialog class="info-dialog" id="info-dialog">
+    <div class="info-dialog-body">
+      <h2 id="info-title"></h2>
+      <p id="info-body"></p>
+      <button type="button" class="info-close" id="info-close">닫기</button>
+    </div>
+  </dialog>
+
+  <script src="./js/memes.js"></script>
+  <script src="./js/filter.js"></script>
+  <script src="./js/search.js"></script>
+  <script src="./js/detail.js"></script>
+  <script src="./js/api.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

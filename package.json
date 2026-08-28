@@ -1,0 +1,18 @@
+{
+  "name": "meme-searcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Meme Searcher MVP with official platform APIs",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

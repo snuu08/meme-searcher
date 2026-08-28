@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#1c1917"/>
+  <circle cx="640" cy="160" r="90" fill="#d6d3d1" fill-opacity="0.35"/>
+  <rect x="72" y="520" width="280" height="12" rx="6" fill="#f5f5f4" fill-opacity="0.35"/>
+  <text x="72" y="230" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" fill="#f5f5f4" fill-opacity="0.55">MEME</text>
+  <text x="72" y="430" font-family="Segoe UI, Arial, sans-serif" font-size="72" font-weight="800" fill="#f5f5f4">15</text>
+  <text x="72" y="490" font-family="Segoe UI, Arial, sans-serif" font-size="28" fill="#f5f5f4" fill-opacity="0.7">Demo placeholder</text>
+</svg>
