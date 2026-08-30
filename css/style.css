@@ -215,6 +215,12 @@ a {
   font-size: 13px;
 }
 
+.data-source {
+  margin: -8px 0 18px;
+  color: #737373;
+  font-size: 13px;
+}
+
 .mobile-countries {
   display: none;
 }

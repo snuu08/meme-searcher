@@ -1,4 +1,5 @@
 const TREND_CONFIG = {
+  platforms: ["youtube", "tiktok", "instagram"],
   risingScore: 75,
   popularScore: 60,
   newHours: 6,
@@ -25,12 +26,6 @@ const TREND_CONFIG = {
       likeRate: 0.25,
       commentRate: 0.25
     },
-    x: {
-      impressionVelocity: 0.4,
-      shareVelocity: 0.3,
-      replyRate: 0.2,
-      likeRate: 0.1
-    },
     instagram: {
       likeVelocity: 0.4,
       commentVelocity: 0.3,
@@ -41,6 +36,7 @@ const TREND_CONFIG = {
 
   seedQueries: ["meme", "viral meme", "밈"],
   seedHashtags: ["meme", "viral", "밈"],
+  memeTerms: ["meme", "viral", "trend", "challenge", "funny", "밈", "유행", "챌린지", "웃긴"],
 
   regionMap: {
     global: null,
@@ -54,8 +50,6 @@ const TREND_CONFIG = {
     youtubePopular: 20,
     youtubeSearchPerQuery: 10,
     youtubeMaxQueries: 4,
-    xMaxResults: 20,
-    xMaxQueries: 4,
     igMediaPerTag: 20,
     igMaxHashtags: 5,
     tiktokMaxResults: 20,

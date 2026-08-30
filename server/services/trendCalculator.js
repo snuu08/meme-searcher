@@ -114,14 +114,6 @@ function scorePlatform(kind, bundle, pct) {
       { value: pct.commentRate, weight: w.commentRate }
     ]);
   }
-  if (kind === "x") {
-    return weightedScore([
-      { value: pct.impressionVelocity, weight: w.impressionVelocity },
-      { value: pct.shareVelocity, weight: w.shareVelocity },
-      { value: pct.replyRate, weight: w.replyRate },
-      { value: pct.likeRate, weight: w.likeRate }
-    ]);
-  }
   return weightedScore([
     { value: pct.likeVelocity, weight: w.likeVelocity },
     { value: pct.commentVelocity, weight: w.commentVelocity },
@@ -141,11 +133,11 @@ function uniqueCreators(posts) {
 
 function calculateCrossPlatformScore(platformScores) {
   var n = 0;
-  ["tiktok", "instagram", "x", "youtube"].forEach(function (k) {
+  TREND_CONFIG.platforms.forEach(function (k) {
     if (platformScores[k] != null) n += 1;
   });
   if (!n) return null;
-  return n * 25;
+  return n * (100 / TREND_CONFIG.platforms.length);
 }
 
 function assignStatus(trendScore, ageHours) {
@@ -168,9 +160,9 @@ function round(n) {
 
 function calculateTrendScore(groups, now) {
   now = now || Date.now();
-  var byPlatform = { tiktok: [], youtube: [], x: [], instagram: [] };
+  var byPlatform = { tiktok: [], youtube: [], instagram: [] };
   var prepared = groups.map(function (group) {
-    var buckets = { tiktok: [], youtube: [], x: [], instagram: [] };
+    var buckets = { tiktok: [], youtube: [], instagram: [] };
     group.posts.forEach(function (p) {
       if (buckets[p.platform]) buckets[p.platform].push(p);
     });

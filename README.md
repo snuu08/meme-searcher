@@ -1,6 +1,6 @@
 # Meme Searcher
 
-지금 인터넷에서 어떤 밈이 뜨고 있는지 빠르게 확인하고, 해당 밈이 무엇인지 이해하는 MVP입니다.
+YouTube, TikTok, Instagram 공식 API를 사용해 지금 어떤 밈이 뜨고 있는지 빠르게 확인하고 검색하는 MVP입니다.
 
 국가는 비교가 아니라 필터입니다. 검색은 항상 전체 데이터를 대상으로 합니다.
 
@@ -32,12 +32,13 @@ cp .env.example .env
 
 ```
 YOUTUBE_API_KEY=
-X_BEARER_TOKEN=
 TIKTOK_CLIENT_KEY=
 TIKTOK_CLIENT_SECRET=
+TIKTOK_RESEARCH_ENABLED=false
 INSTAGRAM_ACCESS_TOKEN=
 INSTAGRAM_IG_USER_ID=
-CACHE_MINUTES=1440
+META_GRAPH_VERSION=v23.0
+CACHE_MINUTES=60
 ```
 
 개발 중 매번 새로 받으려면 `CACHE_MINUTES=0`.
@@ -62,11 +63,19 @@ Live Server만 켜면 `/api/trends`가 없어서 Demo 데이터로 떨어집니�
 2. 4열 Grid에서 탐색
 3. 국가 / 상태 / 기간 필터 사용
 4. 밈 클릭 → 의미 이해
-5. TikTok / Instagram / X / YouTube에서 실제 사례 확인
+5. TikTok / Instagram / YouTube에서 실제 사례 확인
 
 ## 검색
 
-검색은 선택한 국가와 관계없이 **이미 수집된 전체 데이터**를 대상으로 합니다. 검색을 실행하면 국가 필터는 자동으로 **전체**로 바뀝니다. 입력마다 외부 API를 다시 치지 않습니다.
+검색을 실행하면 국가 필터가 **전체**로 바뀌고, 검색어를 YouTube·TikTok·Instagram 수집기에 전달합니다. 같은 검색은 캐시 시간 동안 API를 다시 호출하지 않습니다.
+
+## API별 현실적인 범위
+
+- YouTube Data API: 지역별 인기 영상과 최근 키워드 검색을 사용합니다.
+- Instagram Graph API: 프로페셔널 계정과 필요한 권한으로 해시태그의 최근 미디어를 조회합니다.
+- TikTok Research API: 승인된 연구자만 공개 영상 검색을 사용할 수 있습니다. 승인된 경우에만 `TIKTOK_RESEARCH_ENABLED=true`로 설정합니다. 일반 TikTok 개발자 앱의 Client Key/Secret만으로는 동작하지 않습니다.
+
+API 키가 하나도 없을 때만 Demo 데이터가 표시됩니다. 키가 설정됐지만 수집 결과가 없으면 Demo로 위장하지 않고 빈 결과와 경고를 반환합니다.
 
 ## 기술
 

@@ -1,13 +1,20 @@
 const { TREND_CONFIG } = require("../config/trendConfig");
 const youtube = require("../platforms/youtube");
 const tiktok = require("../platforms/tiktok");
-const x = require("../platforms/x");
 const instagram = require("../platforms/instagram");
 const { groupSameMemes, pickName, tokens, normalizeMemeName } = require("./memeGrouper");
 const { calculateTrendScore } = require("./trendCalculator");
 
 function anyKey() {
-  return youtube.hasKey() || tiktok.hasKey() || x.hasKey() || instagram.hasKey();
+  return youtube.hasKey() || tiktok.hasKey() || instagram.hasKey();
+}
+
+function configuredPlatforms() {
+  return {
+    youtube: youtube.hasKey(),
+    tiktok: tiktok.hasKey(),
+    instagram: instagram.hasKey()
+  };
 }
 
 function extraKeywords(posts) {
@@ -31,7 +38,7 @@ function extraKeywords(posts) {
 function representativePlatform(scores) {
   var best = null;
   var bestVal = -1;
-  ["tiktok", "instagram", "x", "youtube"].forEach(function (k) {
+  TREND_CONFIG.platforms.forEach(function (k) {
     if (scores[k] == null) return;
     if (scores[k] > bestVal) {
       bestVal = scores[k];
@@ -42,7 +49,7 @@ function representativePlatform(scores) {
 }
 
 function platformLinks(posts) {
-  var links = { tiktok: "", instagram: "", x: "", youtube: "" };
+  var links = { tiktok: "", instagram: "", youtube: "" };
   posts.forEach(function (p) {
     if (p.url && !links[p.platform]) links[p.platform] = p.url;
   });
@@ -95,20 +102,22 @@ function metricLine(scored) {
   return bits.join(" · ");
 }
 
-async function collectPeriod(period) {
+async function collectPeriod(period, options) {
+  options = options || {};
   var now = Date.now();
-  var country = "global";
-  var seeds = TREND_CONFIG.seedQueries;
+  var country = options.country || "global";
+  var query = String(options.query || "").trim();
+  var seeds = query ? [query] : TREND_CONFIG.seedQueries;
+  var hashtags = query ? [query] : TREND_CONFIG.seedHashtags;
   var settled = await Promise.allSettled([
     youtube.fetchPosts({ period: period, country: country, now: now, queries: seeds }),
     tiktok.fetchPosts({ period: period, country: country, now: now, queries: seeds }),
-    x.fetchPosts({ period: period, country: country, now: now, queries: seeds }),
-    instagram.fetchPosts({ period: period, country: country, now: now, queries: TREND_CONFIG.seedHashtags })
+    instagram.fetchPosts({ period: period, country: country, now: now, queries: hashtags })
   ]);
 
   var warnings = [];
   var posts = [];
-  var names = ["YouTube", "TikTok", "X", "Instagram"];
+  var names = ["YouTube", "TikTok", "Instagram"];
   settled.forEach(function (result, i) {
     if (result.status !== "fulfilled") {
       console.error("[" + names[i] + "]", result.reason && result.reason.message);
@@ -125,7 +134,6 @@ async function collectPeriod(period) {
     var extraSettled = await Promise.allSettled([
       youtube.hasKey() ? youtube.fetchPosts({ period: period, country: country, now: now, queries: extra }) : Promise.resolve({ posts: [] }),
       tiktok.hasKey() ? tiktok.fetchPosts({ period: period, country: country, now: now, queries: extra }) : Promise.resolve({ posts: [] }),
-      x.hasKey() ? x.fetchPosts({ period: period, country: country, now: now, queries: extra }) : Promise.resolve({ posts: [] }),
       instagram.hasKey() ? instagram.fetchPosts({ period: period, country: country, now: now, queries: extra }) : Promise.resolve({ posts: [] })
     ]);
     var seen = {};
@@ -197,9 +205,11 @@ async function collectPeriod(period) {
     updatedAt: new Date(now).toISOString(),
     period: period,
     source: "api",
+    query: query,
+    platforms: configuredPlatforms(),
     warnings: warnings,
     memes: memes
   };
 }
 
-module.exports = { collectPeriod, anyKey };
+module.exports = { collectPeriod, anyKey, configuredPlatforms };

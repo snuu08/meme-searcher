@@ -9,6 +9,18 @@ function regionFor(country) {
   return TREND_CONFIG.regionMap[country] || null;
 }
 
+function durationSeconds(value) {
+  var match = String(value || "").match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!match) return null;
+  return Number(match[1] || 0) * 3600 + Number(match[2] || 0) * 60 + Number(match[3] || 0);
+}
+
+function isMemeCandidate(item) {
+  var sn = item.snippet || {};
+  var text = ((sn.title || "") + " " + (sn.description || "") + " " + (sn.tags || []).join(" ")).toLowerCase();
+  return TREND_CONFIG.memeTerms.some(function (term) { return text.indexOf(term) !== -1; });
+}
+
 function mapVideo(item, country) {
   var sn = item.snippet || {};
   var st = item.statistics || {};
@@ -37,14 +49,15 @@ function mapVideo(item, country) {
     comments: Number.isFinite(comments) ? comments : null,
     shares: null,
     saves: null,
-    impressions: null
+    impressions: null,
+    durationSeconds: durationSeconds(item.contentDetails && item.contentDetails.duration)
   };
 }
 
 async function videosByIds(ids, country) {
   if (!ids.length) return [];
   var url = new URL("https://www.googleapis.com/youtube/v3/videos");
-  url.searchParams.set("part", "snippet,statistics");
+  url.searchParams.set("part", "snippet,statistics,contentDetails");
   url.searchParams.set("id", ids.join(","));
   url.searchParams.set("maxResults", String(Math.min(50, ids.length)));
   url.searchParams.set("key", process.env.YOUTUBE_API_KEY);
@@ -55,7 +68,7 @@ async function videosByIds(ids, country) {
 async function fetchPopular(country, now) {
   var region = regionFor(country) || "US";
   var url = new URL("https://www.googleapis.com/youtube/v3/videos");
-  url.searchParams.set("part", "snippet,statistics");
+  url.searchParams.set("part", "snippet,statistics,contentDetails");
   url.searchParams.set("chart", "mostPopular");
   url.searchParams.set("maxResults", String(TREND_CONFIG.limits.youtubePopular));
   url.searchParams.set("regionCode", region);
@@ -63,8 +76,12 @@ async function fetchPopular(country, now) {
   var data = await getJson(url);
   var start = periodStart("7d", now).getTime();
   return (data.items || [])
+    .filter(isMemeCandidate)
     .map(function (item) { return mapVideo(item, country === "global" ? "global" : country); })
-    .filter(function (p) { return new Date(p.publishedAt).getTime() >= start; });
+    .filter(function (p) {
+      return new Date(p.publishedAt).getTime() >= start &&
+        (p.durationSeconds == null || p.durationSeconds <= 240);
+    });
 }
 
 async function searchQuery(query, country, period, now) {
@@ -73,6 +90,7 @@ async function searchQuery(query, country, period, now) {
   url.searchParams.set("type", "video");
   url.searchParams.set("q", query);
   url.searchParams.set("order", "viewCount");
+  url.searchParams.set("videoDuration", "short");
   url.searchParams.set("maxResults", String(TREND_CONFIG.limits.youtubeSearchPerQuery));
   url.searchParams.set("publishedAfter", iso(periodStart(period, now)));
   url.searchParams.set("key", process.env.YOUTUBE_API_KEY);

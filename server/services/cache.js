@@ -7,24 +7,25 @@ function cacheMinutes() {
   return Number.isFinite(n) && n >= 0 ? n : 1440;
 }
 
-function cacheKey(period) {
-  return "trends:" + (period || "24h");
+function cacheKey(period, scope) {
+  return "trends:" + (period || "24h") + ":" + (scope || "global");
 }
 
-function get(period) {
-  var entry = store.get(cacheKey(period));
+function get(period, scope) {
+  var key = cacheKey(period, scope);
+  var entry = store.get(key);
   if (!entry) return null;
   var ttl = cacheMinutes() * 60 * 1000;
   if (ttl === 0) return null;
   if (Date.now() - entry.storedAt > ttl) {
-    store.delete(cacheKey(period));
+    store.delete(key);
     return null;
   }
   return entry.value;
 }
 
-function set(period, value) {
-  store.set(cacheKey(period), { value: value, storedAt: Date.now() });
+function set(period, scope, value) {
+  store.set(cacheKey(period, scope), { value: value, storedAt: Date.now() });
   return value;
 }
 

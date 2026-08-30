@@ -17,7 +17,6 @@ function platformButtons(links) {
   var labels = [
     ["tiktok", "TikTok"],
     ["instagram", "Instagram"],
-    ["x", "X"],
     ["youtube", "YouTube"]
   ];
   var html = "";
@@ -51,7 +50,6 @@ function platformScoreList(scores) {
   var labels = [
     ["tiktok", "TikTok"],
     ["instagram", "Instagram"],
-    ["x", "X"],
     ["youtube", "YouTube"]
   ];
   var html = "";

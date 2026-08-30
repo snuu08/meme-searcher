@@ -2,7 +2,8 @@ const { TREND_CONFIG } = require("../config/trendConfig");
 const { periodStart, extractHashtags, warn, getJson } = require("./http");
 
 function hasKey() {
-  return Boolean(process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET);
+  return process.env.TIKTOK_RESEARCH_ENABLED === "true" &&
+    Boolean(process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET);
 }
 
 async function researchToken() {

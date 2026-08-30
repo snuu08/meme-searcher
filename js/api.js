@@ -2,6 +2,7 @@ function fetchTrends(state) {
   var params = new URLSearchParams();
   params.set("period", state.selectedPeriod || "24h");
   params.set("country", state.selectedCountry || "global");
+  if (state.query) params.set("q", state.query);
   return fetch("/api/trends?" + params.toString())
     .then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);

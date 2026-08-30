@@ -15,6 +15,7 @@
     emptyTitle: document.getElementById("empty-title"),
     emptySub: document.getElementById("empty-sub"),
     count: document.getElementById("result-count"),
+    source: document.getElementById("data-source"),
     browse: document.getElementById("browse-view"),
     detail: document.getElementById("detail-view"),
     searchForm: document.getElementById("search-form"),
@@ -34,7 +35,7 @@
     },
     criteria: {
       title: "밈 선정 기준",
-      body: "현재 MVP는 실제 인기 집계가 아닌 샘플 데이터로 화면과 탐색 흐름을 검증합니다. 이후 실제 수집 기준으로 교체할 수 있게 데이터와 화면을 분리해 두었습니다."
+      body: "YouTube·TikTok·Instagram 공식 API에서 제공되는 최근 게시물 지표를 정규화해 Trend Score를 계산합니다. API 권한이 없을 때만 Demo 데이터가 표시됩니다."
     },
     contact: {
       title: "문의",
@@ -46,14 +47,13 @@
     },
     terms: {
       title: "이용약관",
-      body: "현재 화면의 밈 정보는 실제 유행을 단정하지 않는 플레이스홀더입니다."
+      body: "Trend Score는 세 플랫폼에서 제공 가능한 조회·반응·확산 지표를 바탕으로 한 참고 점수이며 절대적인 인기도를 의미하지 않습니다."
     }
   };
 
   var PLATFORM_LABELS = {
     tiktok: "TikTok",
     instagram: "Instagram",
-    x: "X",
     youtube: "YouTube"
   };
 
@@ -146,8 +146,7 @@
   }
 
   function visibleMemes() {
-    var searched = searchMemes(memes, state.query);
-    return sortMemes(filterMemes(searched, state));
+    return sortMemes(filterMemes(memes, state));
   }
 
   function showEmpty(isSearch) {
@@ -206,8 +205,16 @@
 
   function loadTrends(after) {
     fetchTrends(state).then(function (data) {
-      if (data && data.memes && data.memes.length) {
+      if (data && Array.isArray(data.memes)) {
         memes = data.memes;
+      }
+      if (data && els.source) {
+        var active = Object.keys(data.platforms || {}).filter(function (key) { return data.platforms[key]; });
+        var label = data.source === "demo" ? "Demo 데이터" : active.map(function (key) {
+          return PLATFORM_LABELS[key] || key;
+        }).join(" · ") + " API";
+        var updated = data.updatedAt ? new Date(data.updatedAt).toLocaleString("ko-KR") : "";
+        els.source.textContent = label + (updated ? " · " + updated + " 갱신" : "");
       }
       if (after) after();
       else if (state.selectedSlug) showDetail(state.selectedSlug, false);

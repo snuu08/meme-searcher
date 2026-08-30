@@ -5,8 +5,14 @@ function hasKey() {
   return Boolean(process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_IG_USER_ID);
 }
 
+function graphUrl(path) {
+  var configured = String(process.env.META_GRAPH_VERSION || "v23.0");
+  var version = /^v\d+\.\d+$/.test(configured) ? configured : "v23.0";
+  return "https://graph.facebook.com/" + version + "/" + path;
+}
+
 async function hashtagId(tag) {
-  var url = new URL("https://graph.facebook.com/v21.0/ig_hashtag_search");
+  var url = new URL(graphUrl("ig_hashtag_search"));
   url.searchParams.set("user_id", process.env.INSTAGRAM_IG_USER_ID);
   url.searchParams.set("q", tag.replace(/^#/, ""));
   url.searchParams.set("access_token", process.env.INSTAGRAM_ACCESS_TOKEN);
@@ -28,7 +34,7 @@ function mapMedia(item) {
     hashtags: extractHashtags(caption),
     image: item.media_url || null,
     publishedAt: item.timestamp || new Date().toISOString(),
-    authorId: null,
+    authorId: item.username || null,
     country: "global",
     views: null,
     likes: Number.isFinite(likes) ? likes : null,
@@ -40,9 +46,9 @@ function mapMedia(item) {
 }
 
 async function recentMedia(id) {
-  var url = new URL("https://graph.facebook.com/v21.0/" + id + "/recent_media");
+  var url = new URL(graphUrl(id + "/recent_media"));
   url.searchParams.set("user_id", process.env.INSTAGRAM_IG_USER_ID);
-  url.searchParams.set("fields", "caption,like_count,comments_count,media_type,media_url,permalink,timestamp");
+  url.searchParams.set("fields", "caption,like_count,comments_count,media_type,media_url,permalink,timestamp,username");
   url.searchParams.set("limit", String(TREND_CONFIG.limits.igMediaPerTag));
   url.searchParams.set("access_token", process.env.INSTAGRAM_ACCESS_TOKEN);
   var data = await getJson(url);
