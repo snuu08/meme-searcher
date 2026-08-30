@@ -22,3 +22,6 @@ skills-lock.json
 # logs & deploy cache
 *.log
 .netlify/
+
+# runtime trend snapshots
+data/

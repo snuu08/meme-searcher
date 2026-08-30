@@ -11,6 +11,27 @@ function graphUrl(path) {
   return "https://graph.facebook.com/" + version + "/" + path;
 }
 
+function inferCountry(text) {
+  var value = String(text || "");
+  if (/[가-힣]/.test(value)) return "korea";
+  if (/[ぁ-ゟ゠-ヿ]/.test(value)) return "japan";
+  if (/[\u3400-\u4dbf\u4e00-\u9fff]/.test(value)) return "china";
+  return "global";
+}
+
+function instagramEmbedUrl(permalink) {
+  if (!permalink) return "";
+  try {
+    var url = new URL(permalink);
+    url.search = "";
+    url.hash = "";
+    url.pathname = url.pathname.replace(/\/+$/, "") + "/embed/";
+    return url.toString();
+  } catch (_) {
+    return "";
+  }
+}
+
 async function hashtagId(tag) {
   var url = new URL(graphUrl("ig_hashtag_search"));
   url.searchParams.set("user_id", process.env.INSTAGRAM_IG_USER_ID);
@@ -28,31 +49,37 @@ function mapMedia(item) {
     platform: "instagram",
     id: item.id,
     url: item.permalink || "",
+    embedUrl: instagramEmbedUrl(item.permalink),
     title: caption.slice(0, 80),
     text: caption,
     description: caption,
     hashtags: extractHashtags(caption),
-    image: item.media_url || null,
+    image: item.thumbnail_url || item.media_url || null,
     publishedAt: item.timestamp || new Date().toISOString(),
     authorId: item.username || null,
-    country: "global",
+    country: inferCountry(caption),
+    countryBasis: "language",
     views: null,
     likes: Number.isFinite(likes) ? likes : null,
     comments: Number.isFinite(comments) ? comments : null,
     shares: null,
     saves: null,
-    impressions: null
+    impressions: null,
+    mediaType: item.media_type || null,
+    collectedAt: new Date().toISOString()
   };
 }
 
 async function recentMedia(id) {
   var url = new URL(graphUrl(id + "/recent_media"));
   url.searchParams.set("user_id", process.env.INSTAGRAM_IG_USER_ID);
-  url.searchParams.set("fields", "caption,like_count,comments_count,media_type,media_url,permalink,timestamp,username");
+  url.searchParams.set("fields", "caption,like_count,comments_count,media_type,media_url,thumbnail_url,permalink,timestamp,username");
   url.searchParams.set("limit", String(TREND_CONFIG.limits.igMediaPerTag));
   url.searchParams.set("access_token", process.env.INSTAGRAM_ACCESS_TOKEN);
   var data = await getJson(url);
-  return (data.data || []).map(mapMedia);
+  return (data.data || [])
+    .filter(function (item) { return item.media_type === "VIDEO"; })
+    .map(mapMedia);
 }
 
 async function fetchPosts(options) {

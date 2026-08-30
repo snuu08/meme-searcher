@@ -61,6 +61,22 @@ function oldestAge(posts, now) {
   return min === Infinity ? TREND_CONFIG.minAgeHours : min;
 }
 
+function modeCountry(posts) {
+  var counts = {};
+  posts.forEach(function (post) {
+    var country = post.country || "global";
+    counts[country] = (counts[country] || 0) + 1;
+  });
+  var keys = Object.keys(counts);
+  if (!keys.length) return "global";
+  return keys.sort(function (a, b) {
+    if (counts[b] !== counts[a]) return counts[b] - counts[a];
+    if (a === "global") return 1;
+    if (b === "global") return -1;
+    return a.localeCompare(b);
+  })[0];
+}
+
 function platformBundle(posts, now) {
   var age = oldestAge(posts, now);
   var views = sumAvailable(posts, "views");
@@ -69,19 +85,34 @@ function platformBundle(posts, now) {
   var shares = sumAvailable(posts, "shares");
   var impressions = sumAvailable(posts, "impressions");
   var viewLikeBase = views != null ? views : impressions;
+  var lifetimeViewVelocity = calculateVelocity(views, age);
+  var lifetimeLikeVelocity = calculateVelocity(likes, age);
+  var recentViewVelocity = sumAvailable(posts, "recentViewVelocity");
+  var recentLikeVelocity = sumAvailable(posts, "recentLikeVelocity");
+  var recentCommentVelocity = sumAvailable(posts, "recentCommentVelocity");
+  var recentShareVelocity = sumAvailable(posts, "recentShareVelocity");
+  var viewVelocity = recentViewVelocity != null ? recentViewVelocity : lifetimeViewVelocity;
+  var likeVelocity = recentLikeVelocity != null ? recentLikeVelocity : lifetimeLikeVelocity;
+  var acceleration = recentViewVelocity != null && lifetimeViewVelocity != null && lifetimeViewVelocity > 0
+    ? recentViewVelocity / lifetimeViewVelocity
+    : recentLikeVelocity != null && lifetimeLikeVelocity != null && lifetimeLikeVelocity > 0
+      ? recentLikeVelocity / lifetimeLikeVelocity
+      : null;
   return {
     posts: posts,
+    country: modeCountry(posts),
     ageHours: age,
     views: views,
     likes: likes,
     comments: comments,
     shares: shares,
     impressions: impressions,
-    viewVelocity: calculateVelocity(views, age),
-    likeVelocity: calculateVelocity(likes, age),
-    commentVelocity: calculateVelocity(comments, age),
-    shareVelocity: calculateVelocity(shares, age),
+    viewVelocity: viewVelocity,
+    likeVelocity: likeVelocity,
+    commentVelocity: recentCommentVelocity != null ? recentCommentVelocity : calculateVelocity(comments, age),
+    shareVelocity: recentShareVelocity != null ? recentShareVelocity : calculateVelocity(shares, age),
     impressionVelocity: calculateVelocity(impressions, age),
+    acceleration: acceleration,
     likeRate: calculateEngagement(likes, viewLikeBase),
     commentRate: calculateEngagement(comments, viewLikeBase),
     shareRate: calculateEngagement(shares, viewLikeBase),
@@ -89,18 +120,12 @@ function platformBundle(posts, now) {
   };
 }
 
-function percentileMap(items, getter) {
-  var values = items.map(getter);
-  return items.map(function (item, i) {
-    return calculatePercentile(values[i], values);
-  });
-}
-
 function scorePlatform(kind, bundle, pct) {
   var w = TREND_CONFIG.platformWeights[kind] || {};
   if (kind === "tiktok") {
     return weightedScore([
       { value: pct.viewVelocity, weight: w.viewVelocity },
+      { value: pct.acceleration, weight: w.acceleration },
       { value: pct.shareVelocity, weight: w.shareVelocity },
       { value: pct.shareRate, weight: w.shareRate },
       { value: pct.commentRate, weight: w.commentRate },
@@ -110,6 +135,7 @@ function scorePlatform(kind, bundle, pct) {
   if (kind === "youtube") {
     return weightedScore([
       { value: pct.viewVelocity, weight: w.viewVelocity },
+      { value: pct.acceleration, weight: w.acceleration },
       { value: pct.likeRate, weight: w.likeRate },
       { value: pct.commentRate, weight: w.commentRate }
     ]);
@@ -172,39 +198,34 @@ function calculateTrendScore(groups, now) {
       bundles[k] = platformBundle(buckets[k], now);
       byPlatform[k].push(bundles[k]);
     });
-    return { group: group, bundles: bundles };
+    return { group: group, bundles: bundles, country: modeCountry(group.posts) };
   });
 
-  function pctField(kind, field) {
-    return percentileMap(byPlatform[kind], function (b) { return b[field]; });
+  function platformCohort(list, bundle) {
+    var local = list.filter(function (candidate) { return candidate.country === bundle.country; });
+    return local.length >= TREND_CONFIG.minCountryCohort ? local : list;
   }
 
-  var platformPct = {};
   Object.keys(byPlatform).forEach(function (kind) {
     var list = byPlatform[kind];
-    platformPct[kind] = {
-      viewVelocity: pctField(kind, "viewVelocity"),
-      likeVelocity: pctField(kind, "likeVelocity"),
-      commentVelocity: pctField(kind, "commentVelocity"),
-      shareVelocity: pctField(kind, "shareVelocity"),
-      impressionVelocity: pctField(kind, "impressionVelocity"),
-      likeRate: pctField(kind, "likeRate"),
-      commentRate: pctField(kind, "commentRate"),
-      shareRate: pctField(kind, "shareRate")
-    };
-    platformPct[kind].replyRate = platformPct[kind].commentRate;
-    list.forEach(function (bundle, i) {
-      bundle.score = scorePlatform(kind, bundle, {
-        viewVelocity: platformPct[kind].viewVelocity[i],
-        likeVelocity: platformPct[kind].likeVelocity[i],
-        commentVelocity: platformPct[kind].commentVelocity[i],
-        shareVelocity: platformPct[kind].shareVelocity[i],
-        impressionVelocity: platformPct[kind].impressionVelocity[i],
-        likeRate: platformPct[kind].likeRate[i],
-        commentRate: platformPct[kind].commentRate[i],
-        shareRate: platformPct[kind].shareRate[i],
-        replyRate: platformPct[kind].commentRate[i]
-      });
+    list.forEach(function (bundle) {
+      var cohort = platformCohort(list, bundle);
+      function pct(field) {
+        return calculatePercentile(bundle[field], cohort.map(function (candidate) { return candidate[field]; }));
+      }
+      bundle.percentiles = {
+        viewVelocity: pct("viewVelocity"),
+        likeVelocity: pct("likeVelocity"),
+        commentVelocity: pct("commentVelocity"),
+        shareVelocity: pct("shareVelocity"),
+        impressionVelocity: pct("impressionVelocity"),
+        acceleration: pct("acceleration"),
+        likeRate: pct("likeRate"),
+        commentRate: pct("commentRate"),
+        shareRate: pct("shareRate"),
+        saveRate: pct("saveRate")
+      };
+      bundle.score = scorePlatform(kind, bundle, bundle.percentiles);
     });
   });
 
@@ -212,69 +233,91 @@ function calculateTrendScore(groups, now) {
     return uniqueCreators(row.group.posts);
   });
 
+  function averageBundleMetric(row, fields) {
+    var values = [];
+    Object.keys(row.bundles).forEach(function (kind) {
+      var bundle = row.bundles[kind];
+      for (var i = 0; i < fields.length; i++) {
+        if (bundle[fields[i]] != null) {
+          values.push(bundle[fields[i]]);
+          break;
+        }
+      }
+    });
+    if (!values.length) return null;
+    return values.reduce(function (a, b) { return a + b; }, 0) / values.length;
+  }
+
+  function averageBundlePercentile(row, fields) {
+    var values = [];
+    Object.keys(row.bundles).forEach(function (kind) {
+      var pct = row.bundles[kind].percentiles || {};
+      for (var i = 0; i < fields.length; i++) {
+        if (pct[fields[i]] != null) {
+          values.push(pct[fields[i]]);
+          break;
+        }
+      }
+    });
+    if (!values.length) return null;
+    return values.reduce(function (a, b) { return a + b; }, 0) / values.length;
+  }
+
+  var growthValues = prepared.map(function (row) {
+    return averageBundlePercentile(row, ["viewVelocity", "impressionVelocity", "likeVelocity"]);
+  });
+  var accelerationValues = prepared.map(function (row) {
+    return averageBundlePercentile(row, ["acceleration"]);
+  });
+  var shareValues = prepared.map(function (row) {
+    return averageBundlePercentile(row, ["shareVelocity", "shareRate"]);
+  });
+  var engagementValues = prepared.map(function (row) {
+    var values = [];
+    Object.keys(row.bundles).forEach(function (kind) {
+      var pct = row.bundles[kind].percentiles || {};
+      ["likeRate", "commentRate", "shareRate", "saveRate"].forEach(function (field) {
+        if (pct[field] != null) values.push(pct[field]);
+      });
+    });
+    return values.length ? values.reduce(function (a, b) { return a + b; }, 0) / values.length : null;
+  });
+
+  function countryPercentile(value, values, idx) {
+    var local = values.filter(function (_, candidateIdx) {
+      return prepared[candidateIdx].country === prepared[idx].country;
+    });
+    if (local.filter(function (v) { return v != null; }).length < TREND_CONFIG.minCountryCohort) local = values;
+    return calculatePercentile(value, local);
+  }
+
   return prepared.map(function (row, idx) {
     var platformScores = {};
-    var growthParts = [];
-    var shareParts = [];
-    var engagementParts = [];
     Object.keys(row.bundles).forEach(function (kind) {
       var bundle = row.bundles[kind];
       platformScores[kind] = round(bundle.score);
-      if (bundle.viewVelocity != null) growthParts.push(bundle.viewVelocity);
-      else if (bundle.impressionVelocity != null) growthParts.push(bundle.impressionVelocity);
-      else if (bundle.likeVelocity != null) growthParts.push(bundle.likeVelocity);
-      if (bundle.shareVelocity != null) shareParts.push(bundle.shareVelocity);
-      if (bundle.likeRate != null) engagementParts.push(bundle.likeRate);
-      if (bundle.commentRate != null) engagementParts.push(bundle.commentRate);
-      if (bundle.shareRate != null) engagementParts.push(bundle.shareRate);
     });
 
-    var growthValues = prepared.map(function (r) {
-      var vals = [];
-      Object.keys(r.bundles).forEach(function (k) {
-        var b = r.bundles[k];
-        if (b.viewVelocity != null) vals.push(b.viewVelocity);
-        else if (b.impressionVelocity != null) vals.push(b.impressionVelocity);
-        else if (b.likeVelocity != null) vals.push(b.likeVelocity);
-      });
-      if (!vals.length) return null;
-      return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
-    });
-    var shareValues = prepared.map(function (r) {
-      var vals = [];
-      Object.keys(r.bundles).forEach(function (k) {
-        if (r.bundles[k].shareVelocity != null) vals.push(r.bundles[k].shareVelocity);
-      });
-      if (!vals.length) return null;
-      return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
-    });
-    var engagementValues = prepared.map(function (r) {
-      var vals = [];
-      Object.keys(r.bundles).forEach(function (k) {
-        var b = r.bundles[k];
-        if (b.likeRate != null) vals.push(b.likeRate);
-        if (b.commentRate != null) vals.push(b.commentRate);
-        if (b.shareRate != null) vals.push(b.shareRate);
-      });
-      if (!vals.length) return null;
-      return vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
-    });
-
-    var growthVelocityScore = calculatePercentile(growthValues[idx], growthValues);
-    var shareScore = calculatePercentile(shareValues[idx], shareValues);
-    var engagementScore = calculatePercentile(engagementValues[idx], engagementValues);
+    var growthVelocityScore = growthValues[idx];
+    var accelerationScore = accelerationValues[idx];
+    var shareScore = shareValues[idx];
+    var engagementScore = engagementValues[idx];
     var creatorSpreadScore = creatorCounts[idx]
-      ? calculatePercentile(creatorCounts[idx], creatorCounts.filter(Boolean))
+      ? countryPercentile(creatorCounts[idx], creatorCounts, idx)
       : null;
     var crossPlatformScore = calculateCrossPlatformScore(platformScores);
 
     var trendScore = weightedScore([
       { value: growthVelocityScore, weight: TREND_CONFIG.memeScoreWeights.growthVelocity },
+      { value: accelerationScore, weight: TREND_CONFIG.memeScoreWeights.acceleration },
       { value: shareScore, weight: TREND_CONFIG.memeScoreWeights.share },
       { value: engagementScore, weight: TREND_CONFIG.memeScoreWeights.engagement },
       { value: creatorSpreadScore, weight: TREND_CONFIG.memeScoreWeights.creatorSpread },
       { value: crossPlatformScore, weight: TREND_CONFIG.memeScoreWeights.crossPlatform }
     ]);
+    var platformCount = Object.keys(platformScores).filter(function (key) { return platformScores[key] != null; }).length;
+    var confidence = Math.min(1, 0.65 + Math.min(creatorCounts[idx], 3) * 0.1 + Math.max(0, platformCount - 1) * 0.05);
+    if (trendScore != null) trendScore *= confidence;
 
     var minAge = Infinity;
     row.group.posts.forEach(function (p) {
@@ -289,23 +332,33 @@ function calculateTrendScore(groups, now) {
       if (!firstDesc && (p.description || p.text)) firstDesc = p.description || p.text;
     });
 
+    var rawViewVelocity = averageBundleMetric(row, ["viewVelocity", "impressionVelocity", "likeVelocity"]);
+    var rawAcceleration = averageBundleMetric(row, ["acceleration"]);
+    var rawShareVelocity = averageBundleMetric(row, ["shareVelocity"]);
     var metrics = {
-      viewVelocity: growthValues[idx] != null ? round(growthValues[idx]) : null,
-      shareRate: shareValues[idx] != null ? round(shareValues[idx]) : null,
+      viewVelocity: round(rawViewVelocity),
+      acceleration: round(rawAcceleration),
+      shareVelocity: round(rawShareVelocity),
+      shareRate: null,
       commentRate: null,
       likeRate: null
     };
     var commentRates = [];
     var likeRates = [];
+    var shareRates = [];
     Object.keys(row.bundles).forEach(function (k) {
       if (row.bundles[k].commentRate != null) commentRates.push(row.bundles[k].commentRate);
       if (row.bundles[k].likeRate != null) likeRates.push(row.bundles[k].likeRate);
+      if (row.bundles[k].shareRate != null) shareRates.push(row.bundles[k].shareRate);
     });
     if (commentRates.length) {
-      metrics.commentRate = round(commentRates.reduce(function (a, b) { return a + b; }, 0) / commentRates.length);
+      metrics.commentRate = round(100 * commentRates.reduce(function (a, b) { return a + b; }, 0) / commentRates.length);
     }
     if (likeRates.length) {
-      metrics.likeRate = round(likeRates.reduce(function (a, b) { return a + b; }, 0) / likeRates.length);
+      metrics.likeRate = round(100 * likeRates.reduce(function (a, b) { return a + b; }, 0) / likeRates.length);
+    }
+    if (shareRates.length) {
+      metrics.shareRate = round(100 * shareRates.reduce(function (a, b) { return a + b; }, 0) / shareRates.length);
     }
 
     return {
@@ -313,10 +366,13 @@ function calculateTrendScore(groups, now) {
       platformScores: platformScores,
       trendScore: trendScore == null ? null : Math.round(trendScore),
       growthVelocityScore: round(growthVelocityScore),
+      accelerationScore: round(accelerationScore),
       shareScore: round(shareScore),
       engagementScore: round(engagementScore),
       creatorSpreadScore: round(creatorSpreadScore),
       crossPlatformScore: crossPlatformScore,
+      confidenceScore: round(confidence * 100),
+      primaryCountry: row.country,
       creatorCount: creatorCounts[idx],
       postCount: row.group.posts.length,
       status: statusInfo.status,
@@ -337,5 +393,6 @@ module.exports = {
   weightedScore,
   calculateCrossPlatformScore,
   calculateTrendScore,
-  assignStatus
+  assignStatus,
+  modeCountry
 };

@@ -13,6 +13,76 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function safePlatformUrl(value, forEmbed) {
+  if (!value) return "";
+  try {
+    var url = new URL(value);
+    if (url.protocol !== "https:") return "";
+    var host = url.hostname.toLowerCase();
+    var allowed = ["youtube.com", "youtube-nocookie.com", "tiktok.com", "instagram.com"];
+    var trusted = allowed.some(function (domain) {
+      return host === domain || host.endsWith("." + domain);
+    });
+    if (!trusted) return "";
+    if (forEmbed && !/youtube|tiktok|instagram/.test(host)) return "";
+    return url.href;
+  } catch (_) {
+    return "";
+  }
+}
+
+function compactNumber(value) {
+  if (value == null || !Number.isFinite(Number(value))) return "";
+  return new Intl.NumberFormat("ko-KR", { notation: "compact", maximumFractionDigits: 1 }).format(Number(value));
+}
+
+function videoMetricLine(video) {
+  var parts = [];
+  if (video.views != null) parts.push("조회 " + compactNumber(video.views));
+  if (video.likes != null) parts.push("좋아요 " + compactNumber(video.likes));
+  if (video.comments != null) parts.push("댓글 " + compactNumber(video.comments));
+  if (video.shares != null) parts.push("공유 " + compactNumber(video.shares));
+  return parts.join(" · ");
+}
+
+function renderVideoExamples(videos) {
+  if (!videos || !videos.length) return "";
+  var cards = "";
+  for (var i = 0; i < videos.length; i++) {
+    var video = videos[i];
+    var embedUrl = safePlatformUrl(video.embedUrl, true);
+    var pageUrl = safePlatformUrl(video.url, false);
+    if (!embedUrl && !pageUrl) continue;
+    var platform = video.platform === "tiktok"
+      ? "TikTok"
+      : video.platform === "instagram"
+        ? "Instagram"
+        : "YouTube";
+    var country = typeof COUNTRY_LABELS !== "undefined" && COUNTRY_LABELS[video.country]
+      ? COUNTRY_LABELS[video.country]
+      : "글로벌";
+    var media = embedUrl
+      ? '<iframe class="video-example-frame" src="' + escapeHtml(embedUrl) +
+        '" title="' + escapeHtml((video.title || platform) + " 영상") +
+        '" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>'
+      : '<img class="video-example-image" src="' + escapeHtml(video.image || "") +
+        '" alt="' + escapeHtml(video.title || platform) + '">';
+    var title = video.title || platform + " 영상";
+    var metricLine = videoMetricLine(video);
+    cards +=
+      '<article class="video-example-card">' +
+      '<div class="video-example-media">' + media + "</div>" +
+      '<div class="video-example-body">' +
+      '<p class="video-example-source">' + escapeHtml(platform + " · " + country) + "</p>" +
+      '<h3>' + escapeHtml(title) + "</h3>" +
+      (metricLine ? '<p class="video-example-metrics">' + escapeHtml(metricLine) + "</p>" : "") +
+      (pageUrl ? '<a href="' + escapeHtml(pageUrl) + '" target="_blank" rel="noopener noreferrer">원본 보기 ↗</a>' : "") +
+      "</div></article>";
+  }
+  if (!cards) return "";
+  return '<section class="detail-video-section"><h2>실제 영상 예시</h2><div class="video-example-grid">' + cards + "</div></section>";
+}
+
 function platformButtons(links) {
   var labels = [
     ["tiktok", "TikTok"],
@@ -23,7 +93,7 @@ function platformButtons(links) {
   for (var i = 0; i < labels.length; i++) {
     var key = labels[i][0];
     var label = labels[i][1];
-    var url = links && links[key];
+    var url = safePlatformUrl(links && links[key], false);
     if (!url) continue;
     html +=
       '<a class="platform-btn" href="' +
@@ -83,13 +153,16 @@ function statsBlock(meme) {
   if (scores) html += "<ul>" + scores + "</ul>";
   var metrics = [];
   if (meme.metrics && meme.metrics.viewVelocity != null) {
-    metrics.push("조회 확산속도 " + meme.metrics.viewVelocity);
+    metrics.push("시간당 조회 증가 " + meme.metrics.viewVelocity);
+  }
+  if (meme.metrics && meme.metrics.acceleration != null) {
+    metrics.push("가속도 " + meme.metrics.acceleration + "배");
   }
   if (meme.metrics && meme.metrics.shareRate != null) {
-    metrics.push("공유 " + meme.metrics.shareRate);
+    metrics.push("공유율 " + meme.metrics.shareRate + "%");
   }
   if (meme.metrics && meme.metrics.commentRate != null) {
-    metrics.push("댓글 참여율 " + meme.metrics.commentRate);
+    metrics.push("댓글 참여율 " + meme.metrics.commentRate + "%");
   }
   if (meme.crossPlatformScore != null) {
     metrics.push("플랫폼 확산 " + meme.crossPlatformScore);
@@ -126,6 +199,7 @@ function renderDetail(meme) {
     escapeHtml(meme.oneLineDescription) +
     "</p>" +
     statsBlock(meme) +
+    renderVideoExamples(meme.videos) +
     platformBlock +
     '<section class="detail-section">' +
     "  <h2>이게 뭐야?</h2>" +
@@ -146,4 +220,13 @@ function renderDetail(meme) {
         "</section>"
       : "")
   );
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    compactNumber: compactNumber,
+    renderDetail: renderDetail,
+    renderVideoExamples: renderVideoExamples,
+    safePlatformUrl: safePlatformUrl
+  };
 }

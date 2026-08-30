@@ -17,9 +17,31 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2001",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2001",
-      x: "https://x.com/search?q=Demo%20Meme%2001",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2001"
     },
+    videos: [
+      {
+        platform: "tiktok",
+        title: "TikTok 영상 영역 예시",
+        url: "https://www.tiktok.com/search?q=Demo%20Meme%2001",
+        image: "./assets/images/demo-01.svg",
+        country: "korea"
+      },
+      {
+        platform: "instagram",
+        title: "Instagram 영상 영역 예시",
+        url: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2001",
+        image: "./assets/images/demo-02.svg",
+        country: "japan"
+      },
+      {
+        platform: "youtube",
+        title: "YouTube 영상 영역 예시",
+        url: "https://www.youtube.com/results?search_query=Demo%20Meme%2001",
+        image: "./assets/images/demo-03.svg",
+        country: "us"
+      }
+    ],
     createdAt: "2026-08-14"
   },
   {
@@ -40,7 +62,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2002",
       instagram: "",
-      x: "https://x.com/search?q=Demo%20Meme%2002",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -63,7 +84,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "",
-      x: "",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2003"
     },
     createdAt: "2026-08-14"
@@ -86,7 +106,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2004",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2004",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -109,7 +128,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2005",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2005",
-      x: "https://x.com/search?q=Demo%20Meme%2005",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2005"
     },
     createdAt: "2026-08-14"
@@ -132,7 +150,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2006",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -155,7 +172,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2007",
       instagram: "",
-      x: "https://x.com/search?q=Demo%20Meme%2007",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -178,7 +194,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -201,7 +216,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2009",
       instagram: "",
-      x: "",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2009"
     },
     createdAt: "2026-08-14"
@@ -224,7 +238,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2010",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2010",
-      x: "https://x.com/search?q=Demo%20Meme%2010",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -247,7 +260,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "",
-      x: "https://x.com/search?q=Demo%20Meme%2011",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -270,7 +282,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2012",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -293,7 +304,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2013",
       instagram: "",
-      x: "",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2013"
     },
     createdAt: "2026-08-14"
@@ -316,7 +326,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2014",
       instagram: "",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -339,7 +348,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "",
-      x: "https://x.com/search?q=Demo%20Meme%2015",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2015"
     },
     createdAt: "2026-08-14"
@@ -362,7 +370,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -385,7 +392,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2017",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2017",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -408,7 +414,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2018",
       instagram: "",
-      x: "https://x.com/search?q=Demo%20Meme%2018",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2018"
     },
     createdAt: "2026-08-14"
@@ -431,7 +436,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2019",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -454,7 +458,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2020",
       instagram: "",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -477,7 +480,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "",
-      x: "https://x.com/search?q=Demo%20Meme%2021",
       youtube: ""
     },
     createdAt: "2026-08-10"
@@ -500,7 +502,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2022",
       instagram: "",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-09"
@@ -523,7 +524,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "",
-      x: "",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2023"
     },
     createdAt: "2026-08-14"
@@ -546,7 +546,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2024",
       instagram: "",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -569,7 +568,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2025",
-      x: "",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -592,7 +590,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2026",
       instagram: "https://www.instagram.com/explore/search/keyword/?q=Demo%20Meme%2026",
-      x: "https://x.com/search?q=Demo%20Meme%2026",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2026"
     },
     createdAt: "2026-08-14"
@@ -615,7 +612,6 @@ var memes = [
     platformLinks: {
       tiktok: "",
       instagram: "",
-      x: "https://x.com/search?q=Demo%20Meme%2027",
       youtube: ""
     },
     createdAt: "2026-08-14"
@@ -638,7 +634,6 @@ var memes = [
     platformLinks: {
       tiktok: "https://www.tiktok.com/search?q=Demo%20Meme%2028",
       instagram: "",
-      x: "",
       youtube: "https://www.youtube.com/results?search_query=Demo%20Meme%2028"
     },
     createdAt: "2026-08-14"

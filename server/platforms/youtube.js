@@ -6,7 +6,7 @@ function hasKey() {
 }
 
 function regionFor(country) {
-  return TREND_CONFIG.regionMap[country] || null;
+  return TREND_CONFIG.youtubeRegionMap[country] || null;
 }
 
 function durationSeconds(value) {
@@ -34,6 +34,9 @@ function mapVideo(item, country) {
     platform: "youtube",
     id: item.id,
     url: "https://www.youtube.com/watch?v=" + item.id,
+    embedUrl: item.status && item.status.embeddable === false
+      ? ""
+      : "https://www.youtube.com/embed/" + item.id,
     title: sn.title || "",
     text: sn.title || "",
     description: sn.description || "",
@@ -50,14 +53,15 @@ function mapVideo(item, country) {
     shares: null,
     saves: null,
     impressions: null,
-    durationSeconds: durationSeconds(item.contentDetails && item.contentDetails.duration)
+    durationSeconds: durationSeconds(item.contentDetails && item.contentDetails.duration),
+    collectedAt: new Date().toISOString()
   };
 }
 
 async function videosByIds(ids, country) {
   if (!ids.length) return [];
   var url = new URL("https://www.googleapis.com/youtube/v3/videos");
-  url.searchParams.set("part", "snippet,statistics,contentDetails");
+  url.searchParams.set("part", "snippet,statistics,contentDetails,status");
   url.searchParams.set("id", ids.join(","));
   url.searchParams.set("maxResults", String(Math.min(50, ids.length)));
   url.searchParams.set("key", process.env.YOUTUBE_API_KEY);
@@ -66,9 +70,11 @@ async function videosByIds(ids, country) {
 }
 
 async function fetchPopular(country, now) {
-  var region = regionFor(country) || "US";
+  var region = regionFor(country);
+  if (!region && country !== "global") return [];
+  region = region || "US";
   var url = new URL("https://www.googleapis.com/youtube/v3/videos");
-  url.searchParams.set("part", "snippet,statistics,contentDetails");
+  url.searchParams.set("part", "snippet,statistics,contentDetails,status");
   url.searchParams.set("chart", "mostPopular");
   url.searchParams.set("maxResults", String(TREND_CONFIG.limits.youtubePopular));
   url.searchParams.set("regionCode", region);
@@ -96,6 +102,8 @@ async function searchQuery(query, country, period, now) {
   url.searchParams.set("key", process.env.YOUTUBE_API_KEY);
   var region = regionFor(country);
   if (region) url.searchParams.set("regionCode", region);
+  var language = TREND_CONFIG.youtubeLanguageMap[country] || null;
+  if (language) url.searchParams.set("relevanceLanguage", language);
   var data = await getJson(url);
   var ids = (data.items || [])
     .map(function (item) { return item.id && item.id.videoId; })
@@ -106,6 +114,9 @@ async function searchQuery(query, country, period, now) {
 async function fetchPosts(options) {
   if (!hasKey()) return { posts: [], warning: null };
   var country = options.country || "global";
+  if (country === "china") {
+    return { posts: [], warning: "YouTube 중국 본토 지역 차트 미지원" };
+  }
   var period = options.period || "24h";
   var now = options.now || Date.now();
   var queries = options.queries || TREND_CONFIG.seedQueries;

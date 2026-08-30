@@ -5,6 +5,11 @@ const STOP = {
   twitter: 1, fyp: 1, trending: 1, official: 1
 };
 
+function meaningfulTag(tag) {
+  var value = normalizeMemeName(tag);
+  return value.length >= 2 && !STOP[value] ? value : "";
+}
+
 function normalizeMemeName(text) {
   return String(text || "")
     .toLowerCase()
@@ -42,7 +47,7 @@ function jaccard(a, b) {
 }
 
 function postTokens(post) {
-  var tagTokens = (post.hashtags || []).map(normalizeMemeName).filter(Boolean);
+  var tagTokens = (post.hashtags || []).map(meaningfulTag).filter(Boolean);
   return tokens((post.title || "") + " " + (post.text || "") + " " + (post.description || "")).concat(tagTokens);
 }
 
@@ -64,7 +69,7 @@ function groupSameMemes(posts) {
   var tagIndex = {};
   posts.forEach(function (post, i) {
     (post.hashtags || []).forEach(function (tag) {
-      var key = normalizeMemeName(tag);
+      var key = meaningfulTag(tag);
       if (!key) return;
       if (!tagIndex[key]) tagIndex[key] = [];
       tagIndex[key].push(i);
@@ -103,7 +108,7 @@ function pickName(posts) {
   var counts = {};
   posts.forEach(function (p) {
     (p.hashtags || []).forEach(function (tag) {
-      var n = normalizeMemeName(tag);
+      var n = meaningfulTag(tag);
       if (!n) return;
       counts[n] = (counts[n] || 0) + 1;
     });

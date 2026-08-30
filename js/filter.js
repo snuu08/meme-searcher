@@ -1,7 +1,7 @@
 var COUNTRY_LABELS = {
   global: "전체",
   us: "미국",
-  china: "중국",
+  china: "중국/중화권",
   korea: "한국",
   japan: "일본"
 };

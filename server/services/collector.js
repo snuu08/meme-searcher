@@ -4,6 +4,8 @@ const tiktok = require("../platforms/tiktok");
 const instagram = require("../platforms/instagram");
 const { groupSameMemes, pickName, tokens, normalizeMemeName } = require("./memeGrouper");
 const { calculateTrendScore } = require("./trendCalculator");
+const { enrichPosts } = require("./snapshotStore");
+const { balanceHomepageMemes } = require("./countryBalancer");
 
 function anyKey() {
   return youtube.hasKey() || tiktok.hasKey() || instagram.hasKey();
@@ -56,6 +58,39 @@ function platformLinks(posts) {
   return links;
 }
 
+function exampleVideos(posts) {
+  var perPlatform = {};
+  return posts
+    .filter(function (post) { return post.embedUrl || post.url; })
+    .slice()
+    .sort(function (a, b) {
+      return (b.views || b.likes || 0) - (a.views || a.likes || 0);
+    })
+    .filter(function (post) {
+      perPlatform[post.platform] = (perPlatform[post.platform] || 0) + 1;
+      return perPlatform[post.platform] <= 2;
+    })
+    .slice(0, TREND_CONFIG.videoExamplesPerMeme)
+    .map(function (post) {
+      return {
+        platform: post.platform,
+        id: post.id,
+        title: post.title,
+        url: post.url,
+        embedUrl: post.embedUrl,
+        image: post.image,
+        authorId: post.authorId,
+        country: post.country,
+        publishedAt: post.publishedAt,
+        views: post.views,
+        likes: post.likes,
+        comments: post.comments,
+        shares: post.shares,
+        saves: post.saves
+      };
+    });
+}
+
 function countriesOf(posts) {
   var set = {};
   posts.forEach(function (p) {
@@ -95,11 +130,89 @@ function slugify(name, index) {
 
 function metricLine(scored) {
   var bits = [];
-  if (scored.metrics.viewVelocity != null) bits.push("조회 확산속도 " + scored.metrics.viewVelocity);
-  if (scored.shareScore != null) bits.push("공유 " + scored.shareScore);
-  if (scored.metrics.commentRate != null) bits.push("댓글 참여율 " + scored.metrics.commentRate);
-  if (scored.crossPlatformScore != null) bits.push("플랫폼 확산 " + scored.crossPlatformScore);
+  if (scored.metrics.viewVelocity != null) bits.push("시간당 조회 증가 " + scored.metrics.viewVelocity);
+  if (scored.metrics.acceleration != null) bits.push("가속도 " + scored.metrics.acceleration + "배");
+  if (scored.shareScore != null) bits.push("공유 확산점수 " + scored.shareScore);
+  if (scored.metrics.commentRate != null) bits.push("댓글 참여율 " + scored.metrics.commentRate + "%");
+  if (scored.crossPlatformScore != null) bits.push("플랫폼 확산점수 " + scored.crossPlatformScore);
   return bits.join(" · ");
+}
+
+function discoveryCountries(country) {
+  return country === "global" ? TREND_CONFIG.discoveryCountries.slice() : [country];
+}
+
+function countryQueries(country) {
+  return (TREND_CONFIG.countryQueries[country] || TREND_CONFIG.seedQueries).slice();
+}
+
+function instagramDiscoveryQueries(country) {
+  if (country !== "global") {
+    return (TREND_CONFIG.countryHashtags[country] || TREND_CONFIG.seedHashtags).slice();
+  }
+  return TREND_CONFIG.discoveryCountries.map(function (targetCountry) {
+    var tags = TREND_CONFIG.countryHashtags[targetCountry] || [];
+    return tags[0];
+  }).filter(Boolean).concat(["viral"]);
+}
+
+function buildJobs(period, country, now, queries, instagramQueries) {
+  var jobs = [];
+  discoveryCountries(country).forEach(function (targetCountry) {
+    var targetQueries = queries && queries.length ? queries : countryQueries(targetCountry);
+    if (youtube.hasKey() && targetCountry !== "china") {
+      jobs.push({
+        name: "YouTube " + targetCountry,
+        promise: youtube.fetchPosts({ period: period, country: targetCountry, now: now, queries: targetQueries })
+      });
+    }
+    if (tiktok.hasKey()) {
+      jobs.push({
+        name: "TikTok " + targetCountry,
+        promise: tiktok.fetchPosts({ period: period, country: targetCountry, now: now, queries: targetQueries })
+      });
+    }
+  });
+  if (instagram.hasKey()) {
+    jobs.push({
+      name: "Instagram",
+      promise: instagram.fetchPosts({
+        period: period,
+        country: country,
+        now: now,
+        queries: instagramQueries && instagramQueries.length
+          ? instagramQueries
+          : instagramDiscoveryQueries(country)
+      })
+    });
+  }
+  return jobs;
+}
+
+async function runJobs(jobs, warnings) {
+  var settled = await Promise.allSettled(jobs.map(function (job) { return job.promise; }));
+  var posts = [];
+  settled.forEach(function (result, i) {
+    if (result.status !== "fulfilled") {
+      console.error("[" + jobs[i].name + "]", result.reason && result.reason.message);
+      if (warnings) warnings.push(jobs[i].name + " 데이터 사용 불가");
+      return;
+    }
+    var pack = result.value || { posts: [] };
+    if (warnings && pack.warning) warnings.push(pack.warning);
+    (pack.posts || []).forEach(function (post) { posts.push(post); });
+  });
+  return posts;
+}
+
+function dedupePosts(posts) {
+  var seen = {};
+  return posts.filter(function (post) {
+    var key = post.platform + ":" + post.id;
+    if (!post.id || seen[key]) return false;
+    seen[key] = 1;
+    return true;
+  });
 }
 
 async function collectPeriod(period, options) {
@@ -107,46 +220,19 @@ async function collectPeriod(period, options) {
   var now = Date.now();
   var country = options.country || "global";
   var query = String(options.query || "").trim();
-  var seeds = query ? [query] : TREND_CONFIG.seedQueries;
-  var hashtags = query ? [query] : TREND_CONFIG.seedHashtags;
-  var settled = await Promise.allSettled([
-    youtube.fetchPosts({ period: period, country: country, now: now, queries: seeds }),
-    tiktok.fetchPosts({ period: period, country: country, now: now, queries: seeds }),
-    instagram.fetchPosts({ period: period, country: country, now: now, queries: hashtags })
-  ]);
-
+  var seeds = query ? [query] : null;
+  var hashtags = query ? [query] : null;
   var warnings = [];
-  var posts = [];
-  var names = ["YouTube", "TikTok", "Instagram"];
-  settled.forEach(function (result, i) {
-    if (result.status !== "fulfilled") {
-      console.error("[" + names[i] + "]", result.reason && result.reason.message);
-      warnings.push(names[i] + " 데이터 사용 불가");
-      return;
-    }
-    var pack = result.value || { posts: [] };
-    if (pack.warning) warnings.push(pack.warning);
-    (pack.posts || []).forEach(function (p) { posts.push(p); });
-  });
+  if (youtube.hasKey() && discoveryCountries(country).indexOf("china") !== -1) {
+    warnings.push("YouTube는 중국 본토 지역 차트를 제공하지 않아 중국/중화권 집계에서 제외됩니다.");
+  }
+  var posts = await runJobs(buildJobs(period, country, now, seeds, hashtags), warnings);
+  posts = dedupePosts(posts);
 
   var extra = extraKeywords(posts);
   if (extra.length) {
-    var extraSettled = await Promise.allSettled([
-      youtube.hasKey() ? youtube.fetchPosts({ period: period, country: country, now: now, queries: extra }) : Promise.resolve({ posts: [] }),
-      tiktok.hasKey() ? tiktok.fetchPosts({ period: period, country: country, now: now, queries: extra }) : Promise.resolve({ posts: [] }),
-      instagram.hasKey() ? instagram.fetchPosts({ period: period, country: country, now: now, queries: extra }) : Promise.resolve({ posts: [] })
-    ]);
-    var seen = {};
-    posts.forEach(function (p) { seen[p.platform + ":" + p.id] = 1; });
-    extraSettled.forEach(function (result) {
-      if (result.status !== "fulfilled") return;
-      (result.value.posts || []).forEach(function (p) {
-        var k = p.platform + ":" + p.id;
-        if (seen[k]) return;
-        seen[k] = 1;
-        posts.push(p);
-      });
-    });
+    var extraPosts = await runJobs(buildJobs(period, country, now, extra, extra), null);
+    posts = dedupePosts(posts.concat(extraPosts));
   }
 
   var start = now - (period === "7d" ? 7 : 1) * 24 * 60 * 60 * 1000;
@@ -154,6 +240,14 @@ async function collectPeriod(period, options) {
     var t = new Date(p.publishedAt).getTime();
     return Number.isFinite(t) && t >= start;
   });
+  if (posts.length) {
+    try {
+      posts = await enrichPosts(posts, now);
+    } catch (err) {
+      console.error("[snapshots]", err.message);
+      warnings.push("증가 속도 스냅샷 저장 불가 — 누적 지표로 계산");
+    }
+  }
 
   var groups = groupSameMemes(posts);
   var scored = calculateTrendScore(groups, now);
@@ -176,12 +270,14 @@ async function collectPeriod(period, options) {
       keywords: keywordsOf(group.posts, name),
       hashtags: hashtagsOf(group.posts),
       countries: countriesOf(group.posts),
+      primaryCountry: s.primaryCountry,
       status: s.status,
       statuses: s.statuses,
       popularityScore: s.trendScore == null ? 0 : s.trendScore,
       trendScore: s.trendScore,
       platforms: s.platformScores,
       platformLinks: platformLinks(group.posts),
+      videos: exampleVideos(group.posts),
       createdAt: group.posts
         .map(function (p) { return p.publishedAt; })
         .sort()
@@ -190,16 +286,23 @@ async function collectPeriod(period, options) {
       creatorCount: s.creatorCount,
       metrics: s.metrics,
       growthVelocityScore: s.growthVelocityScore,
+      accelerationScore: s.accelerationScore,
       shareScore: s.shareScore,
       engagementScore: s.engagementScore,
       creatorSpreadScore: s.creatorSpreadScore,
       crossPlatformScore: s.crossPlatformScore,
+      confidenceScore: s.confidenceScore,
       representativePlatform: representativePlatform(s.platformScores),
       source: "api"
     };
   });
 
   memes.sort(function (a, b) { return (b.trendScore || 0) - (a.trendScore || 0); });
+  if (country === "global" && !query) {
+    memes = balanceHomepageMemes(memes, TREND_CONFIG.homepageLimit);
+  } else {
+    memes = memes.slice(0, TREND_CONFIG.homepageLimit);
+  }
 
   return {
     updatedAt: new Date(now).toISOString(),

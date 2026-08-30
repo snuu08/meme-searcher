@@ -35,7 +35,7 @@
     },
     criteria: {
       title: "밈 선정 기준",
-      body: "YouTube·TikTok·Instagram 공식 API에서 제공되는 최근 게시물 지표를 정규화해 Trend Score를 계산합니다. API 권한이 없을 때만 Demo 데이터가 표시됩니다."
+      body: "최근 증가 속도·가속도·공유·참여율·창작자 확산·교차 플랫폼 확산을 플랫폼·국가 안에서 정규화해 Trend Score를 계산합니다. 제공되지 않는 지표는 0점이 아니라 가중치에서 제외합니다."
     },
     contact: {
       title: "문의",
@@ -57,12 +57,22 @@
     youtube: "YouTube"
   };
 
+  var CARD_COUNTRY_LABELS = {
+    korea: "한국",
+    japan: "일본",
+    china: "중국/중화권",
+    us: "미국",
+    global: "글로벌"
+  };
+
   function cardMeta(meme) {
     var bits = [];
     if (meme.trendScore != null && meme.trendScore !== "") bits.push("Trend " + meme.trendScore);
     if (meme.representativePlatform) {
       bits.push(PLATFORM_LABELS[meme.representativePlatform] || meme.representativePlatform);
     }
+    var country = meme.primaryCountry || (meme.countries && meme.countries[0]);
+    if (country) bits.push(CARD_COUNTRY_LABELS[country] || "기타 지역");
     return bits.join(" · ");
   }
 
@@ -214,7 +224,10 @@
           return PLATFORM_LABELS[key] || key;
         }).join(" · ") + " API";
         var updated = data.updatedAt ? new Date(data.updatedAt).toLocaleString("ko-KR") : "";
-        els.source.textContent = label + (updated ? " · " + updated + " 갱신" : "");
+        var warnings = Array.isArray(data.warnings) ? data.warnings.filter(Boolean) : [];
+        els.source.textContent = label +
+          (updated ? " · " + updated + " 갱신" : "") +
+          (warnings.length ? " · " + warnings.join(" · ") : "");
       }
       if (after) after();
       else if (state.selectedSlug) showDetail(state.selectedSlug, false);
